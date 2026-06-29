@@ -52,7 +52,7 @@ async def get_favorite_news_list(
     news_list = await fetch_favorite_news_list(db, user.id, offset, page_size)
     total = await fetch_favorite_news_list_count(db, user.id)
     has_more = total > offset + page_size
-    # 先把每一条 Row 验证成 FavoriteNewsItemResponse（这一步用 model_validate 是对的，因为每个 Row 对得上单条 schema）
+    # 先把每一条 Row 验证成 FavoriteNewsItemResponse（这一步用 model_validate , 因为每个 Row 对得上单条 schema）
     items = [FavoriteNewsItemResponse.model_validate(row) for row in news_list]
 
     # 再把三样东西装进 FavoriteListResponse —— 直接传参，不用 model_validate
