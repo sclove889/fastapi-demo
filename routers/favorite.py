@@ -55,7 +55,7 @@ async def get_favorite_news_list(
     # 先把每一条 Row 验证成 FavoriteNewsItemResponse（这一步用 model_validate , 因为每个 Row 对得上单条 schema）
     items = [FavoriteNewsItemResponse.model_validate(row) for row in news_list]
 
-    # 再把三样东西装进 FavoriteListResponse —— 直接传参，不用 model_validate
+    # 把三样东西装进 FavoriteListResponse —— 直接传参，不用 model_validate
     response = FavoriteListResponse(list=items, total=total, hasMore=has_more)
 
     return success_response(data=response.model_dump(by_alias=True))
