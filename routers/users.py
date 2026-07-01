@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.db_config import get_db
+from config.db_conf import get_db
 from crud.users import get_user_data_by_username, create_user, generate_token, authenticate_user, update_user_info, \
     change_user_password
 from models.users import User

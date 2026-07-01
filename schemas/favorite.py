@@ -4,6 +4,9 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from schemas.news import NewsListResponse
 
+class FavoriteAddRequest(BaseModel):
+    news_id: int = Field(alias="newsId")
+
 
 class FavoriteCheckResponse(BaseModel):
     is_favorite: bool = Field(alias="isFavorite")

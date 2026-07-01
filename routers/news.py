@@ -2,9 +2,9 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.params import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.db_config import get_db
+from config.db_conf import get_db
 from crud.news import fetch_categories, fetch_news_list, fetch_news_count, fetch_news_detail, update_news_views, \
-    fetch_recommended_news
+    fetch_recommended_news, fetch_news_views, fetch_news_views_batch
 from schemas.news import NewsDetailResponse, NewsListResponse
 from utils.response import success_response
 
@@ -37,6 +37,12 @@ async def get_news_list(
         "total": total,
         "hasMore": has_more,
     }
+    # 缓存里的 views 是旧值，用数据库最新阅读数逐条覆盖
+    if news_list_data["list"]:
+        ids = [item["id"] for item in news_list_data["list"]]
+        views_map = await fetch_news_views_batch(db, ids)
+        for item in news_list_data["list"]:
+            item["views"] = views_map.get(item["id"], 0)
     return success_response(data = news_list_data)
 
 
@@ -51,9 +57,15 @@ async def get_news_detail(
 
     views_result = await update_news_views(db, news_id)
 
-    recommended_news = await fetch_recommended_news(db, news_detail.category_id, news_id)
+    # 先统一转成 Pydantic 模型：model_validate 对 ORM 对象和缓存 dict 都适用，
+    # 之后从模型上取 category_id，避免 dict 没有 .category_id 属性导致 500
+    news_model = NewsDetailResponse.model_validate(news_detail)
 
-    news_data = NewsDetailResponse.model_validate(news_detail).model_dump(by_alias=True)
+    recommended_news = await fetch_recommended_news(db, news_model.category_id, news_id)
+
+    news_data = news_model.model_dump(by_alias=True)
+    # 缓存里的 views 是旧值，用数据库最新阅读数覆盖，保证每次返回的阅读数都是实时的
+    news_data["views"] = await fetch_news_views(db, news_id)
     news_data["relatedNews"] = recommended_news
     return success_response(data=news_data)
 

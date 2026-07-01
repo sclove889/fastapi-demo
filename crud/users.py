@@ -60,7 +60,11 @@ async def get_user_by_token(db : AsyncSession, token: str):
     query = select(UserToken).where(UserToken.token == token)
     result = await db.execute(query)
     user_token = result.scalar_one_or_none()
-    if not user_token or user_token.expires_at < datetime.now(timezone.utc):
+    if not user_token:
+        return None
+    # 数据库存的是 naive datetime（丢了时区），比较前补上 UTC 时区，避免 naive/aware 混比报错
+    expires_at = user_token.expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
         return None
     query2 = select(User).where(User.id == user_token.user_id)
     result2 = await db.execute(query2)

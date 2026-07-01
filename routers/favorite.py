@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.db_config import get_db
+from config.db_conf import get_db
 from crud.favorite import check_favorite_news_by_user, add_favorite_news_by_user, remove_favorite_news_by_user, \
     fetch_favorite_news_list, fetch_favorite_news_list_count, remove_all_favorite_news_by_user
 from models.users import User
-from schemas.favorite import FavoriteResponse, FavoriteListResponse, FavoriteCheckResponse, FavoriteNewsItemResponse
+from schemas.favorite import FavoriteResponse, FavoriteListResponse, FavoriteCheckResponse, FavoriteNewsItemResponse, \
+    FavoriteAddRequest
 from utils.auth import get_current_user
 from utils.response import success_response
 
@@ -24,11 +25,11 @@ async def check_favorite_news(
 
 @router.post("/add")
 async def add_favorite_news(
+        favorite_news: FavoriteAddRequest,
         db: AsyncSession = Depends(get_db),
-        user: User = Depends(get_current_user),
-        news_id: int = Query(..., alias="newsId")
+        user: User = Depends(get_current_user)
         ):
-    result = await add_favorite_news_by_user(db, user.id, news_id)
+    result = await add_favorite_news_by_user(db, user.id, favorite_news.news_id)
     favorite_news = FavoriteResponse.model_validate(result).model_dump(by_alias=True)
     return success_response(message="收藏成功", data=favorite_news)
 
@@ -52,10 +53,10 @@ async def get_favorite_news_list(
     news_list = await fetch_favorite_news_list(db, user.id, offset, page_size)
     total = await fetch_favorite_news_list_count(db, user.id)
     has_more = total > offset + page_size
-    # 先把每一条 Row 验证成 FavoriteNewsItemResponse（这一步用 model_validate , 因为每个 Row 对得上单条 schema）
+    # 先把每一条 Row 验证成 FavoriteNewsItemResponse（这一步用 model_validate 是对的，因为每个 Row 对得上单条 schema）
     items = [FavoriteNewsItemResponse.model_validate(row) for row in news_list]
 
-    # 把三样东西装进 FavoriteListResponse —— 直接传参，不用 model_validate
+    # 再把三样东西装进 FavoriteListResponse —— 直接传参，不用 model_validate
     response = FavoriteListResponse(list=items, total=total, hasMore=has_more)
 
     return success_response(data=response.model_dump(by_alias=True))

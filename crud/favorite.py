@@ -49,7 +49,7 @@ async def fetch_favorite_news_list(db:AsyncSession, user_id:int, skip:int = 0, l
     return result.all()
 
 async def fetch_favorite_news_list_count(db:AsyncSession, user_id:int):
-    stmt = select(func.count(News.id)).select_from(Favorite).where(Favorite.user_id == user_id)
+    stmt = select(func.count()).select_from(Favorite).where(Favorite.user_id == user_id)
     result = await db.execute(stmt)
     return result.scalar_one()
 
