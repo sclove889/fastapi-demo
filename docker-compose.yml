@@ -1,0 +1,43 @@
+# FastAPI-Project 本地依赖服务：MySQL + Redis
+# 用法：
+#   docker compose up -d        # 后台启动（数据会从已有的 mysql8_data 卷原样挂回）
+#   docker compose ps           # 看状态
+#   docker compose stop         # 只停不删（下次 up 秒起）
+#   docker compose down         # 删容器（数据仍在命名卷里，不丢）
+#   docker compose logs -f mysql
+services:
+  mysql:
+    image: mysql:8.4                 # 与你已有镜像/数据版本一致，避免数据目录不兼容
+    container_name: mysql8
+    restart: unless-stopped         # 关键：Docker/电脑重启后自动拉回，除非你手动 stop
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456" # 与 .env 里 DATABASE_URL 的 root:123456 一致
+      MYSQL_DATABASE: news_app      # 数据目录已存在时该项被忽略，仅作文档/首次初始化用
+      TZ: Asia/Shanghai
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "3306:3306"                 # 对应 .env: localhost:3306
+    volumes:
+      - mysql8_data:/var/lib/mysql  # 复用你已有的命名卷（news_app 数据就在里面）
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7                  # 与你已有镜像一致
+    container_name: redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]  # 开 AOF 持久化，重启不丢缓存
+    ports:
+      - "6379:6379"                 # 对应 config/cache_conf.py: localhost:6379
+    volumes:
+      - redis_data:/data
+
+volumes:
+  # external:true = 使用【已存在】的同名卷，而不是新建带项目前缀的卷。
+  # 这是能把老数据挂回来的关键：不写 external，compose 会去找 fastapi-project_mysql8_data（不存在→空库）。
+  mysql8_data:
+    external: true
+  redis_data:                       # redis 只是会话缓存，新建即可
